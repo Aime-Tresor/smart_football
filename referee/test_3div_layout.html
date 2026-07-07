@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3-Div Layout Test - Referee Match Management</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .test-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #007bff;
+        }
+
+        .test-section h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .test-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+
+        .test-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+        }
+
+        .test-link.debug {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+
+        .test-link.debug:hover {
+            box-shadow: 0 4px 15px rgba(220,53,69,0.3);
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .feature-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .feature-item h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+
+        .feature-item p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-testing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .test-steps {
+            list-style: none;
+            padding: 0;
+        }
+
+        .test-steps li {
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .test-steps li:before {
+            content: "🔧";
+            position: absolute;
+            left: 0;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🏟️ 3-Div Layout Test - Referee Match Management</h1>
+            <p>Test the new 3-div layout with team players and card functionality</p>
+            <span class="status-indicator status-testing">Testing Mode</span>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 Test the Enhanced Match View</h3>
+            <p>Click the links below to test the new 3-div layout functionality:</p>
+            <a href="view_match.php?match_id=1" class="test-link" target="_blank">
+                🏟️ Open Match View (Match ID: 1)
+            </a>
+            <a href="debug_match.php" class="test-link debug" target="_blank">
+                🔍 Debug Information
+            </a>
+            <a href="get_team_players.php?team_id=1&match_id=1" class="test-link" target="_blank">
+                👥 Test Team Players API
+            </a>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Testing Steps</h3>
+            <ol class="test-steps">
+                <li>Open the match view using the link above</li>
+                <li>Verify the 3-div layout appears: Team 1 | Score | Team 2</li>
+                <li>Click on Team 1 div to expand and show players</li>
+                <li>Click on Team 2 div to expand and show players</li>
+                <li>Test giving yellow cards to players</li>
+                <li>Test giving red cards to players</li>
+                <li>Test automatic double yellow to red conversion</li>
+                <li>Test goal entry in the middle score div</li>
+                <li>Verify all data is saved to database</li>
+                <li>Check browser console for any JavaScript errors</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>✨ Expected Features</h3>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <h4>🏟️ 3-Div Layout</h4>
+                    <p>Team 1, Score/Goal Entry, Team 2 in responsive grid</p>
+                </div>
+                <div class="feature-item">
+                    <h4>👥 Click-to-Expand Players</h4>
+                    <p>Click team divs to show/hide player lists</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🟨🟥 Card Management</h4>
+                    <p>Give yellow/red cards with automatic conversion</p>
+                </div>
+                <div class="feature-item">
+                    <h4>⚽ Goal Entry</h4>
+                    <p>Add goals with player attribution and minute</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🔄 Real-time Updates</h4>
+                    <p>Instant database updates and visual feedback</p>
+                </div>
+                <div class="feature-item">
+                    <h4>📱 Responsive Design</h4>
+                    <p>Works on desktop and mobile devices</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Troubleshooting</h3>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <h4>Players Not Loading</h4>
+                    <p>Check browser console and test the Team Players API link</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Cards Not Working</h4>
+                    <p>Verify save_card.php is accessible and database is connected</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Layout Issues</h4>
+                    <p>Check CSS grid support and responsive breakpoints</p>
+                </div>
+                <div class="feature-item">
+                    <h4>JavaScript Errors</h4>
+                    <p>Open browser console (F12) to see detailed error messages</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Key Functionality</h3>
+            <ul class="test-steps">
+                <li><strong>Referee Filtering:</strong> Only shows matches assigned to current referee</li>
+                <li><strong>Team Players:</strong> Click team divs to expand player lists</li>
+                <li><strong>Card System:</strong> Yellow and red cards with automatic conversion</li>
+                <li><strong>Goal Entry:</strong> Add goals with player and minute information</li>
+                <li><strong>Real-time Updates:</strong> All changes saved to database immediately</li>
+                <li><strong>Visual Feedback:</strong> Success/error messages and animations</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Football - Live Football Updates</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* Updated Color Scheme */
+        .navbar {
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .logo a {
+            color: #2ecc71; /* Primary green color */
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: #2ecc71;
+        }
+
+        .login-btn {
+            background: #2ecc71;
+        }
+
+        .login-btn:hover {
+            background: #27ae60; /* Darker green */
+        }
+
+        header {
+            background: linear-gradient(135deg, #2ecc71, #27ae60); /* Green gradient */
+        }
+
+        .match-card {
+            box-shadow: 0 4px 6px rgba(46, 204, 113, 0.1); /* Green tint shadow */
+        }
+
+        .form-group input:focus {
+            border-color: #2ecc71;
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.15);
+        }
+
+        .login-submit-btn {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+
+        .login-submit-btn:hover {
+            box-shadow: 0 8px 20px rgba(46, 204, 113, 0.3);
+        }
+
+        .modal-content:hover {
+            box-shadow: 0 12px 40px rgba(46, 204, 113, 0.15);
+        }
+
+        .strength-bar {
+            background: #eee;
+        }
+
+        /* Keep rest of the styles same except color references */
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <a href="#">Smart Football</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="homepage.html" class="active">Home</a></li>
+                <li><a href="champion.html">Champion</a></li>
+                <li><a href="teams.html">Teams</a></li>
+                <li><a href="#" onclick="openLoginModal()" class="login-btn">Login</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Login/Signup Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeLoginModal()">&times;</span>
+            
+            <!-- Login Form -->
+            <div id="loginFormContainer">
+                <h2>Welcome Back</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <input type="email" placeholder="Email address" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="login-submit-btn">Sign In</button>
+                    <div class="form-toggle">
+                        New user? <a href="#" onclick="showSignup()">Create account</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signupFormContainer" style="display: none;">
+                <h2>Join Smart Football</h2>
+                <form id="signupForm">
+                    <div class="form-group">
+                        <input type="text" placeholder="Full name" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="email" placeholder="Email address" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="signupPassword" placeholder="Create password" required>
+                        <div class="password-strength">
+                            <div class="strength-bar"></div>
+                            <div class="strength-bar"></div>
+                            <div class="strength-bar"></div>
+                        </div>
+                    </div>
+                    <button type="submit" class="login-submit-btn">Create Account</button>
+                    <div class="form-toggle">
+                        Have an account? <a href="#" onclick="showLogin()">Sign in</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <h1>Smart Football ⚽</h1>
+                <p style="color: rgba(255,255,255,0.9);">Live Scores & Match Analytics</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="matches-container">
+            <div class="match-card" onclick="toggleDetails(this)">
+                <div class="match-info">
+                    <div class="league">Premier League - Round 24</div>
+                    <div class="time">Today ∙ 20:00 GMT</div>
+                </div>
+                <div class="teams">
+                    <div class="team">
+                        <img src="team-a.png" alt="Team A" class="team-logo">
+                        <div>Manchester City</div>
+                    </div>
+                    <div class="vs">VS</div>
+                    <div class="team">
+                        <img src="team-b.png" alt="Team B" class="team-logo">
+                        <div>Liverpool</div>
+                    </div>
+                </div>
+                <div class="expanded-details">
+                    <div class="squad-section">
+                        <div class="squad-list">
+                            <h4>Manchester City XI</h4>
+                            <div class="player">Ederson</div>
+                            <div class="player">Walker</div>
+                            <div class="player">Stones</div>
+                        </div>
+                        <div class="squad-list">
+                            <h4>Liverpool XI</h4>
+                            <div class="player">Alisson</div>
+                            <div class="player">Alexander-Arnold</div>
+                            <div class="player">Van Dijk</div>
+                        </div>
+                    </div>
+                    <div class="squad-section">
+                        <div class="squad-list">
+                            <h4>Substitutes</h4>
+                            <div class="player">Ortega</div>
+                            <div class="player">Gvardiol</div>
+                        </div>
+                    </div>
+                    <div class="referees">
+                        <h4>Match Officials</h4>
+                        <div class="player">Referee: Michael Oliver</div>
+                        <div class="player">Assistant: Stuart Burt</div>
+                        <div class="player">VAR: Paul Tierney</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Smart Football</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Popular Leagues</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Premier League</a></li>
+                        <li><a href="#">La Liga</a></li>
+                        <li><a href="#">Serie A</a></li>
+                        <li><a href="#">Bundesliga</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Newsletter</h4>
+                    <form action="" method="POST" class="newsletter-form">
+                        <input type="email" placeholder="Enter your email" required>
+                        <button type="submit">Subscribe</button>
+                    </form>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2023 Smart Football. All rights reserved.</p>
+                <div class="legal-links">
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Fixed JavaScript errors
+        function toggleDetails(card) {
+            const details = card.querySelector('.expanded-details');
+            const allCards = document.querySelectorAll('.match-card');
+            
+            allCards.forEach(otherCard => {
+                if (otherCard !== card) {
+                    otherCard.classList.remove('active');
+                    otherCard.querySelector('.expanded-details').style.maxHeight = null;
+                }
+            });
+
+            card.classList.toggle('active');
+            details.style.maxHeight = details.style.maxHeight ? null : `${details.scrollHeight}px`;
+        }
+
+        const modal = document.getElementById('loginModal'); // Single declaration
+
+        function openLoginModal() {
+            modal.style.display = 'block';
+        }
+
+        function closeLoginModal() {
+            modal.style.display = 'none';
+            showLogin();
+        }
+
+        window.onclick = function(event) {
+            if (event.target === modal) closeLoginModal();
+        }
+
+        // Form Toggle
+        function showSignup() {
+            document.getElementById('loginFormContainer').style.display = 'none';
+            document.getElementById('signupFormContainer').style.display = 'block';
+        }
+
+        function showLogin() {
+            document.getElementById('signupFormContainer').style.display = 'none';
+            document.getElementById('loginFormContainer').style.display = 'block';
+        }
+
+        // Password Strength
+        document.getElementById('signupPassword').addEventListener('input', function(e) {
+            const strengthBars = document.querySelectorAll('.strength-bar');
+            const password = e.target.value;
+            let strength = 0;
+
+            if (password.match(/[a-z]/)) strength++;
+            if (password.match(/[A-Z]/)) strength++;
+            if (password.match(/[0-9]/)) strength++;
+            if (password.match(/[^A-Za-z0-9]/)) strength++;
+            if (password.length >= 8) strength++;
+
+            strengthBars.forEach((bar, index) => {
+                bar.style.backgroundColor = index < strength ? '#2ecc71' : '#eee';
+            });
+        });
+
+        // Form Submissions
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            closeLoginModal();
+        });
+
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            closeLoginModal();
+        });
+    </script>
+</body>
+</html>
