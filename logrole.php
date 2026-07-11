@@ -15,6 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'admin':
             header('Location: login.php');
             exit;
+            case 'discipline_committee_officer':
+              header('Location: app/committee_login.php');
+              exit;
         default:
             $_SESSION['msg'] = "Please select a valid role.";
             $_SESSION['msg_type'] = "error";
@@ -79,7 +82,7 @@ if (isset($_SESSION['msg'])) {
                 <div class="text-center mb-4">
                 </div>
                 <h1 class="display-6 fw-bold">Football Association</h1>
-                <p class="fw-light mb-0">Primus National League Role Selection</p>
+                <p class="fw-light mb-0">BK Pro League Role Selection</p>
               </div>
             </div>
           </div>
@@ -93,7 +96,12 @@ if (isset($_SESSION['msg'])) {
                 <button type="submit" name="role" value="referee" class="btn btn-outline-success w-100 mb-3 py-2 fs-5">
                   <i class="fas fa-whistle me-2"></i> Referee
                 </button>
-
+                <!-- <button type="submit" name="role" value="committee_login" class="btn btn-outline-success w-100 mb-3 py-2 fs-5">
+                  <i class="fas fa-whistle me-2"></i> Discipline Commette Officer
+                </button> -->
+                <button type="submit" name="role" value="discipline_committee_officer" class="btn btn-outline-success w-100 mb-3 py-2 fs-5">
+                <i class="fas fa-gavel me-2"></i> Discipline Committee Officer
+                </button>
                 <button type="submit" name="role" value="teams" class="btn btn-outline-primary w-100 mb-3 py-2 fs-5">
                   <i class="fas fa-users me-2"></i> Teams
                 </button>

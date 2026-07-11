@@ -1,6 +1,53 @@
-<?php require_once 'header.php'; ?>
+<?php 
+require_once 'header.php'; ?>
 
 <style>
+ 
+  /* existing styles here */
+
+  /* Appeals Section Styling */
+  .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+  }
+
+  .card-header h4 {
+    color: white !important;
+  }
+
+  /* Pending Appeals heading */
+  .card-body h5 {
+    color: #333 !important;
+    font-weight: 600;
+  }
+
+  /* No pending message */
+  .card-body .text-muted {
+    color: #666 !important;
+  }
+
+  /* Stats cards */
+  .card.bg-warning {
+    background: #ffc107 !important;
+  }
+
+  .card.bg-success {
+    background: #28a745 !important;
+  }
+
+  .card.bg-danger {
+    background: #dc3545 !important;
+  }
+
+  .card.bg-primary {
+    background: #667eea !important;
+  }
+
+  /* Table styling */
+  .table-hover tbody tr:hover {
+    background-color: #f0f0f0 !important;
+  }
+
   /* Card styles */
   .card {
     background-color: #1e293b; /* dark blue-gray */
@@ -241,16 +288,128 @@
                   </div>
                   <div class="match-info">Week <?= $week; ?> Fixtures • <?= $date . ' ' . $time; ?></div>
                   <div class="match-status <?= $matchStatusClass; ?>"><?= ucfirst($status); ?></div>
-              </div>
-      <?php
+                  <?php
           endwhile;
-      else:
-          echo "<p>No upcoming matches found for weeks $weekNumber and $nextWeek.</p>";
       endif;
-
-      $stmt->close();
-      $conn->close();
+      
+      if (empty($result) || mysqli_num_rows($result) == 0) {
       ?>
+      <!-- APPEALS SECTION FOR ADMIN -->
+      <div class="row mt-5">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header bg-primary">
+              <h4 class="text-white mb-0">
+                <i class="fas fa-gavel me-2"></i>Disciplinary Appeals
+              </h4>
+            </div>
+            <div class="card-body">
+              <?php
+              // Get appeal statistics
+              $stmt = $connection->prepare("SELECT COUNT(*) as count FROM appeal_cases WHERE status = 'pending'");
+              $stmt->execute();
+              $pending = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+
+              $stmt = $connection->prepare("SELECT COUNT(*) as count FROM appeal_cases WHERE status = 'approved'");
+              $stmt->execute();
+              $approved = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+
+              $stmt = $connection->prepare("SELECT COUNT(*) as count FROM appeal_cases WHERE status = 'rejected'");
+              $stmt->execute();
+              $rejected = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+              ?>
+
+              <!-- Stats Row -->
+              <div class="row mb-4">
+                <div class="col-md-3">
+                  <div class="card bg-warning text-white text-center p-3">
+                    <h5><?php echo $pending; ?></h5>
+                    <p class="mb-0">Pending Appeals</p>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card bg-success text-white text-center p-3">
+                    <h5><?php echo $approved; ?></h5>
+                    <p class="mb-0">Approved</p>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card bg-danger text-white text-center p-3">
+                    <h5><?php echo $rejected; ?></h5>
+                    <p class="mb-0">Rejected</p>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <a href="discipline_committee_dashboard.php" class="btn btn-primary w-100 h-100">
+                    <i class="fas fa-gavel"></i><br>
+                    <strong>Full Dashboard</strong>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Recent Pending Appeals -->
+              <h5 >Pending Appeals</h5>
+              <?php
+              $stmt = $connection->prepare("
+                SELECT ac.*, t.name as team_name, dc.offence_description
+                FROM appeal_cases ac
+                JOIN team t ON ac.team_id = t.team_id
+                LEFT JOIN ai_discipline_cases dc ON ac.discipline_case_id = dc.case_id
+                WHERE ac.status = 'pending'
+                ORDER BY ac.appeal_date DESC
+                LIMIT 5
+              ");
+              $stmt->execute();
+              $pending_appeals = $stmt->fetchAll();
+              ?>
+</div>
+      </div>
+      <?php } ?>
+              <?php if (empty($pending_appeals)): ?>
+                <p>No pending appeals at this time.</p>
+              <?php else: ?>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Team</th>
+                        <th>Offense</th>
+                        <th>Submitted</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <?php foreach ($pending_appeals as $appeal): ?>
+                        <tr>
+                          <td><strong><?php echo htmlspecialchars($appeal['team_name']); ?></strong></td>
+                          <td><?php echo htmlspecialchars(substr($appeal['offence_description'] ?? 'N/A', 0, 40)); ?></td>
+                          <td><?php echo date('M d, Y', strtotime($appeal['appeal_date'])); ?></td>
+                          <td>
+                            <a href="discipline_committee_dashboard.php" class="btn btn-sm btn-primary">
+                              Review
+                            </a>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+              <?php endif; ?>
+
+              <!-- Quick Links -->
+              <div class="mt-3">
+                <a href="manage_committee.php" class="btn btn-info btn-sm me-2">
+                  <i class="fas fa-users-cog"></i> Manage Committee
+                </a>
+                <a href="discipline_committee_dashboard.php" class="btn btn-primary btn-sm">
+                  <i class="fas fa-gavel"></i> View All Appeals
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>

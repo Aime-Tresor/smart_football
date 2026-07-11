@@ -145,7 +145,9 @@ header("location: ../teams.php");
                                     class="fa fa-refresh"></i><span class="hide-menu">Transfer Requests</span></a>
                         </li>
                        
-                     
+                        <li> <a class="waves-effect waves-dark" href="teams_appeals.php" aria-expanded="false">
+                            <i class="fa fa-gavel"></i><span class="hide-menu">Disciplinary Appeals</span></a>
+</li>
                     </ul>
                     
                 </nav>

@@ -41,7 +41,7 @@
               <div class="info d-flex justify-content-center flex-column p-4 h-100">
                 <div class="py-5">
                   <h1 class="display-6 fw-bold">Referee App</h1>
-                  <p class="fw-light mb-0">Rwanda Primus National League</p>
+                  <p class="fw-light mb-0">BK Pro League</p>
                 </div>
               </div>
             </div>
@@ -50,7 +50,7 @@
             <div class="col-lg-6 bg-white">
               <div class="d-flex align-items-center px-4 px-lg-5 h-100">
                 <form class="login-form py-5 w-100" method="post" action="app/referee_login.php">
-                  
+                <h2 class="mb-4 text-center fw-bold">Referee Portal Login</h2>
                   <!-- Email Input -->
                   <div class="input-material-group mb-3">
                     <input class="input-material" id="login-email" type="email" name="email" autocomplete="off" required>

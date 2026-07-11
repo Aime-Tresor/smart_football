@@ -641,6 +641,9 @@ $conn->close();
                             </select>
                             <textarea name="description" class="goal-input" placeholder="Goal description (optional)" rows="2"></textarea>
                             <button type="submit" class="goal-btn">⚽ Add Detailed Goal</button>
+                            <a href="record_card.php?match_id=<?php echo $match_id; ?>" class="btn btn-danger">
+                            <i class="fas fa-square"></i> Record Card
+                            </a>
                         </form>
                     </div>
                 </div>

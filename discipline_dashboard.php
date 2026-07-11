@@ -59,8 +59,8 @@ if (isset($_SESSION['msg'])) {
           <!-- Login Form Panel -->
           <div class="col-lg-6 bg-white">
             <div class="d-flex align-items-center px-4 px-lg-5 h-100">
-              <form class="login-form py-5 w-100" method="post" action="app/login.php">
-                <h2 class="mb-4 text-center fw-bold">Admin Login</h2>
+              <form class="login-form py-5 w-100" method="post" action=#>
+                <h2 class="mb-4 text-center fw-bold">Discipline Commette Login Portal</h2>
                 
                 <div class="input-material-group mb-3">
                   <input class="input-material" id="login-username" type="text" name="username" autocomplete="off" required>

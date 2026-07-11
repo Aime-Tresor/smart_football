@@ -217,34 +217,51 @@ if (!isset($_SESSION['fa_user']) or empty($_SESSION['fa_user'])) {
             <div class="scroll-sidebar">
                 <!-- Sidebar navigation-->
                 <nav class="sidebar-nav">
-                    <ul id="sidebarnav">
-                        <li> <a class="waves-effect waves-dark" href="index.php" aria-expanded="false"><i
-                                    class="fa fa-home"></i><span class="hide-menu">Home</span></a>
-                        </li>
-                        <li> <a class="waves-effect waves-dark" href="teams.php" aria-expanded="false"><i
-                                    class="fa fa-user-circle-o"></i><span class="hide-menu">Teams</span></a>
-                        </li>
-       
-                        <li> <a class="waves-effect waves-dark" href="referee.php" aria-expanded="false"><i
-                                    class="fa fa-eraser"></i><span class="hide-menu">Referees</span></a>
-                        </li>
-                        <li> <a class="waves-effect waves-dark" href="fixture.php" aria-expanded="false"><i
-                                    class="fa fa-th-list"></i><span class="hide-menu">Fixtures</span></a>
-                        </li>
-                        <li> <a class="waves-effect waves-dark" href="fixtureReport.php" aria-expanded="false"><i
-                                    class="fa fa-user"></i><span class="hide-menu">Results</span></a>
-                        </li>
-                        <!-- <li> <a class="waves-effect waves-dark" href="champions.php" aria-expanded="false"><i
-                                    class="fa fa-trophy"></i><span class="hide-menu">Champion</span></a>
-                        </li> -->
-                        <!-- <li> <a class="waves-effect waves-dark" href="SeasonRepo.php" aria-expanded="false"><i
-                                    class="fa fa-database"></i><span class="hide-menu">Season Reports</span></a>
-                        </li> -->
-                        <li> <a class="waves-effect waves-dark" href="transfer.php" aria-expanded="false"><i
-                                    class="fa fa-refresh"></i><span class="hide-menu">Transfer</span></a>
-                        </li>
-                     
-                    </ul>
+                <ul id="sidebarnav">
+                
+                <?php 
+                // Check if user is committee member
+                $is_committee = isset($_SESSION['committee_id']);
+                ?>
+
+                <!-- Always show Dashboard -->
+                <li> 
+                  <a class="waves-effect waves-dark" href="index.php" aria-expanded="false">
+                    <i class="fa fa-home"></i><span class="hide-menu">Dashboard</span>
+                  </a>
+                </li>
+
+                <!-- COMMITTEE-ONLY MENU ITEMS -->
+                <?php if ($is_committee): ?>
+                  <li> 
+                    <a class="waves-effect waves-dark" href="committee_member_dashboard.php" aria-expanded="false">
+                      <i class="fa fa-user-circle"></i><span class="hide-menu">My Profile</span>
+                    </a>
+                  </li>
+
+                  <li> 
+                    <a class="waves-effect waves-dark" href="discipline_committee_dashboard.php" aria-expanded="false">
+                      <i class="fa fa-gavel"></i><span class="hide-menu">Review Appeals</span>
+                    </a>
+                  </li>
+
+                  <li> 
+                    <a class="waves-effect waves-dark" href="logout.php" aria-expanded="false">
+                      <i class="fa fa-sign-out"></i><span class="hide-menu">Logout</span>
+                    </a>
+                  </li>
+                <?php else: ?>
+                  <!-- ADMIN MENU ITEMS (existing) -->
+                  <li> <a class="waves-effect waves-dark" href="teams.php" aria-expanded="false"><i class="fa fa-user-circle-o"></i><span class="hide-menu">Teams</span></a></li>
+                  <li> <a class="waves-effect waves-dark" href="referee.php" aria-expanded="false"><i class="fa fa-eraser"></i><span class="hide-menu">Referees</span></a></li>
+                  <li> <a class="waves-effect waves-dark" href="fixture.php" aria-expanded="false"><i class="fa fa-th-list"></i><span class="hide-menu">Fixtures</span></a></li>
+                  <li> <a class="waves-effect waves-dark" href="fixtureReport.php" aria-expanded="false"><i class="fa fa-user"></i><span class="hide-menu">Results</span></a></li>
+                  <li> <a class="waves-effect waves-dark" href="transfer.php" aria-expanded="false"><i class="fa fa-refresh"></i><span class="hide-menu">Transfer</span></a></li>
+                  <li> <a class="waves-effect waves-dark" href="manage_committee.php" aria-expanded="false"><i class="fa fa-users-cog"></i><span class="hide-menu">Manage Committee</span></a></li>
+                  <li> <a class="waves-effect waves-dark" href="logout.php" aria-expanded="false"><i class="fa fa-sign-out"></i><span class="hide-menu">Logout</span></a></li>
+                <?php endif; ?>
+
+            </ul>
                     
                 </nav>
                 <!-- End Sidebar navigation -->
