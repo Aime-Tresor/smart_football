@@ -1,10 +1,7 @@
 <?php
 
-if (!isset($_SESSION['referee_id'])) {
-    $_SESSION['referee_id'] = 1; // fake login for testing
-}
-
-// Get referee ID from session
+// Get referee ID from session - callers are expected to have already
+// redirected unauthenticated visitors before including this header.
 $refereeId = $_SESSION['referee_id'] ?? null;
 
 // Connect to DB

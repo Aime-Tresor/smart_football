@@ -1,9 +1,9 @@
 <?php
 session_start();
 
-// Dummy login fallback
 if (!isset($_SESSION['referee_id'])) {
-    $_SESSION['referee_id'] = 1;
+    header('Location: ../referee.php');
+    exit;
 }
 
 $refereeId = $_SESSION['referee_id'];
@@ -192,6 +192,19 @@ $initials = strtoupper(substr($referee['fname'] ?? '', 0, 1) . substr($referee['
 <div class="main-content">
   <h2>Today's Matches</h2>
 
+  <?php if (isset($_SESSION['success_message'])): ?>
+    <div style="background:#d4edda;color:#155724;padding:12px 16px;border-radius:8px;margin-bottom:16px;">
+      <?= htmlspecialchars($_SESSION['success_message']) ?>
+    </div>
+    <?php unset($_SESSION['success_message']); ?>
+  <?php endif; ?>
+  <?php if (isset($_SESSION['error_message'])): ?>
+    <div style="background:#f8d7da;color:#721c24;padding:12px 16px;border-radius:8px;margin-bottom:16px;">
+      <?= htmlspecialchars($_SESSION['error_message']) ?>
+    </div>
+    <?php unset($_SESSION['error_message']); ?>
+  <?php endif; ?>
+
   <div class="matches-grid" id="matchesContainer">
     <?php
     $sql = "
@@ -258,9 +271,11 @@ $initials = strtoupper(substr($referee['fname'] ?? '', 0, 1) . substr($referee['
           <?php elseif ($status === 'live'): ?>
             <div style="margin-top: 10px;">
               <a href="view_match.php?match_id=<?= $row['id']; ?>" class="btn-start-match" style="background-color: #28a745;">View</a>
-              <form method="post" action="stop_match.php" style="display: inline;">
+              <form method="post" action="stop_match.php" style="display: inline;"
+                    onsubmit="return confirm('Finish this match? Further goals, cards and substitutions cannot be recorded once it is finished.');">
                 <input type="hidden" name="match_id" value="<?= $row['id']; ?>" />
-                <button type="submit" class="btn-start-match" style="background-color: #dc3545; margin-left: 10px;">Stop</button>
+                <input type="hidden" name="confirm_zero_scores" value="1" />
+                <button type="submit" class="btn-start-match" style="background-color: #dc3545; margin-left: 10px;">Finish Match</button>
               </form>
             </div>
           <?php elseif ($status === 'completed'): ?>

@@ -256,6 +256,7 @@ if (!isset($_SESSION['fa_user']) or empty($_SESSION['fa_user'])) {
                   <li> <a class="waves-effect waves-dark" href="referee.php" aria-expanded="false"><i class="fa fa-eraser"></i><span class="hide-menu">Referees</span></a></li>
                   <li> <a class="waves-effect waves-dark" href="fixture.php" aria-expanded="false"><i class="fa fa-th-list"></i><span class="hide-menu">Fixtures</span></a></li>
                   <li> <a class="waves-effect waves-dark" href="fixtureReport.php" aria-expanded="false"><i class="fa fa-user"></i><span class="hide-menu">Results</span></a></li>
+                  <li> <a class="waves-effect waves-dark" href="league_table.php" aria-expanded="false"><i class="fa fa-list-ol"></i><span class="hide-menu">League Table</span></a></li>
                   <li> <a class="waves-effect waves-dark" href="transfer.php" aria-expanded="false"><i class="fa fa-refresh"></i><span class="hide-menu">Transfer</span></a></li>
                   <li> <a class="waves-effect waves-dark" href="manage_committee.php" aria-expanded="false"><i class="fa fa-users-cog"></i><span class="hide-menu">Manage Committee</span></a></li>
                   <li> <a class="waves-effect waves-dark" href="logout.php" aria-expanded="false"><i class="fa fa-sign-out"></i><span class="hide-menu">Logout</span></a></li>

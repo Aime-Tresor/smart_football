@@ -61,25 +61,27 @@
                                             </h4>
                                             <span class="mail-desc">Cards </span>
                                             <?php
-                                            $sql1 = 'SELECT COUNT(card) AS totalYellow FROM match_day_reports WHERE card="Yellow" AND week=? AND team=?';
+                                            // Card counts are derived from the canonical `cards` table (not the
+                                            // legacy match_day_reports, which drifts out of sync - see CardStatsService).
+                                            $sql1 = 'SELECT COUNT(*) AS totalYellow FROM cards c JOIN team_members tm ON c.member_id = tm.member_id JOIN `match` m ON c.match_id = m.id WHERE c.card_type = "yellow" AND c.deleted_at IS NULL AND m.week = ? AND tm.team = ?';
                                             $stmt = $connection->prepare($sql1);
                                             $stmt->execute([$team->week,$team_a_id]);
                                             while($data=$stmt->fetch(PDO::FETCH_ASSOC))
-                                            $yellow = $data['totalYellow'];      
+                                            $yellow = $data['totalYellow'];
                                             ?>
                                             <?php
-                                            $sql1 = 'SELECT COUNT(card) AS doubleCard FROM match_day_reports WHERE card="Double" AND week=? AND team=?';
+                                            $sql1 = 'SELECT COUNT(*) AS doubleCard FROM cards c JOIN team_members tm ON c.member_id = tm.member_id JOIN `match` m ON c.match_id = m.id WHERE c.card_type = "double_yellow" AND c.deleted_at IS NULL AND m.week = ? AND tm.team = ?';
                                             $stmt = $connection->prepare($sql1);
                                             $stmt->execute([$team->week,$team_a_id]);
                                             while($data=$stmt->fetch(PDO::FETCH_ASSOC))
-                                            $Double = $data['doubleCard'];      
+                                            $Double = $data['doubleCard'];
                                             ?>
                                             <?php
-                                            $sql1 = 'SELECT COUNT(card) AS totalred FROM match_day_reports WHERE card="Red" AND week=? AND team=?';
+                                            $sql1 = 'SELECT COUNT(*) AS totalred FROM cards c JOIN team_members tm ON c.member_id = tm.member_id JOIN `match` m ON c.match_id = m.id WHERE c.card_type = "red" AND c.deleted_at IS NULL AND m.week = ? AND tm.team = ?';
                                             $stmt = $connection->prepare($sql1);
                                             $stmt->execute([$team->week,$team_a_id]);
                                             while($data=$stmt->fetch(PDO::FETCH_ASSOC))
-                                            $redcard = $data['totalred'];      
+                                            $redcard = $data['totalred'];
                                             ?>
                                             <span class="badge text-info"
                                                 style="background-color:#ffff1a;"><?= $yellow; ?> </span>
@@ -127,25 +129,25 @@
                                             </h4>
 
                                             <?php
-                                            $sql1 = 'SELECT COUNT(card) AS totalYellow FROM match_day_reports WHERE card="Yellow" AND week=? AND team=?';
+                                            $sql1 = 'SELECT COUNT(*) AS totalYellow FROM cards c JOIN team_members tm ON c.member_id = tm.member_id JOIN `match` m ON c.match_id = m.id WHERE c.card_type = "yellow" AND c.deleted_at IS NULL AND m.week = ? AND tm.team = ?';
                                             $stmt = $connection->prepare($sql1);
                                             $stmt->execute([$team->week,$team_b_id]);
                                             while($data=$stmt->fetch(PDO::FETCH_ASSOC))
                                             $yellow = $data['totalYellow'];
                                             ?>
                                             <?php
-                                            $sql1 = 'SELECT COUNT(card) AS doubleCard FROM match_day_reports WHERE card="Double" AND week=? AND team=?';
+                                            $sql1 = 'SELECT COUNT(*) AS doubleCard FROM cards c JOIN team_members tm ON c.member_id = tm.member_id JOIN `match` m ON c.match_id = m.id WHERE c.card_type = "double_yellow" AND c.deleted_at IS NULL AND m.week = ? AND tm.team = ?';
                                             $stmt = $connection->prepare($sql1);
                                             $stmt->execute([$team->week,$team_b_id]);
                                             while($data=$stmt->fetch(PDO::FETCH_ASSOC))
-                                            $Double = $data['doubleCard'];      
+                                            $Double = $data['doubleCard'];
                                             ?>
                                             <?php
-                                            $sql1 = 'SELECT COUNT(card) AS totalred FROM match_day_reports WHERE card="Red" AND week=? AND team=?';
+                                            $sql1 = 'SELECT COUNT(*) AS totalred FROM cards c JOIN team_members tm ON c.member_id = tm.member_id JOIN `match` m ON c.match_id = m.id WHERE c.card_type = "red" AND c.deleted_at IS NULL AND m.week = ? AND tm.team = ?';
                                             $stmt = $connection->prepare($sql1);
                                             $stmt->execute([$team->week,$team_b_id]);
                                             while($data=$stmt->fetch(PDO::FETCH_ASSOC))
-                                            $redcard = $data['totalred'];      
+                                            $redcard = $data['totalred'];
                                             ?>
                                             <span class="badge badge-danger"><?= $redcard + $Double; ?></span>
                                             <span class="badge text-info"

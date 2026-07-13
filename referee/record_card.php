@@ -1,4 +1,8 @@
 <?php
+require __DIR__ . '/../vendor/autoload.php';
+
+use App\ServiceFactory;
+
 session_start();
 require '../app/database.php';
 
@@ -31,73 +35,48 @@ if (!$match) {
 
 $success_msg = $error_msg = '';
 
-// Handle card submission
+// Handle card submission - routed through CardService so this "detailed"
+// form and the quick-card AJAX flow (save_card.php) write to the same
+// `cards` table instead of two disconnected places.
 if ($_POST && isset($_POST['submit_card'])) {
     $player_id = $_POST['player_id'];
-    $team_id = $_POST['team_id'];
     $card_type = $_POST['card_type'];
     $card_minute = $_POST['card_minute'];
+    $card_reason_title = trim($_POST['card_reason_title'] ?? '');
     $offense_description = trim($_POST['offense_description'] ?? '');
-    $article_code = $_POST['article_code'] ?? 'ART-1';
 
     if (empty($player_id) || empty($card_type) || empty($card_minute)) {
         $error_msg = "Player, card type, and minute are required.";
+    } elseif ($card_reason_title === '') {
+        $error_msg = "Card Reason Title is required.";
+    } elseif ($card_type === 'red' && $offense_description === '') {
+        $error_msg = "Red card requires a detailed explanation.";
     } else {
-        try {
-            // Insert card record
-            $stmt = $connection->prepare("
-                INSERT INTO match_day_reports (team_member, team, card, card_min, week)
-                VALUES (?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([$player_id, $team_id, $card_type, $card_minute, $match['week']]);
+        $result = ServiceFactory::cardService()->issueCard([
+            'member_id' => $player_id,
+            'match_id' => $match_id,
+            'card_type' => $card_type,
+            'card_time' => $card_minute,
+            'card_reason_title' => $card_reason_title,
+            'card_reason_detail' => $offense_description ?: null,
+        ]);
 
-            // If RED CARD, create discipline case automatically
-            if ($card_type === 'red') {
-                if (empty($offense_description)) {
-                    $error_msg = "Red card requires offense description.";
-                } else {
-                    // Determine sanction based on offense
-                    $sanction = 'To be determined';
-                    switch (strtolower($offense_description)) {
-                        case 'violent conduct':
-                            $sanction = '5 game suspension';
-                            $article_code = 'ART-15';
-                            break;
-                        case 'spitting':
-                            $sanction = '10 game suspension';
-                            $article_code = 'ART-16';
-                            break;
-                        case 'abusive language':
-                            $sanction = '3 game suspension';
-                            $article_code = 'ART-14';
-                            break;
-                        default:
-                            $sanction = '2 game suspension';
-                            $article_code = 'ART-1';
-                    }
-
-                    $stmt = $connection->prepare("
-                        INSERT INTO ai_discipline_cases (team_id, member_id, offence_description, article_code, sanction, status, created_at)
-                        VALUES (?, ?, ?, ?, ?, 'pending', NOW())
-                    ");
-                    $stmt->execute([$team_id, $player_id, $offense_description, $article_code, $sanction]);
-
-                    $success_msg = "Red card recorded! Discipline case created automatically.";
-                }
-            } else {
-                $success_msg = "Card recorded successfully.";
-            }
-        } catch (Exception $e) {
-            $error_msg = "Error: " . $e->getMessage();
+        if ($result->success) {
+            $success_msg = $card_type === 'red'
+                ? "Red card recorded! Discipline case created automatically. AI is generating a detailed summary."
+                : "Card recorded successfully. AI is generating a detailed summary.";
+        } else {
+            $error_msg = $result->error;
         }
     }
 }
 
-// Get players from both teams
+// Get players from both teams - suspended players (5+ yellows, or any
+// red/double-yellow) are excluded; they must not be selectable to play.
 $stmt = $connection->prepare("
     SELECT member_id, fname, lname, number, position, team
     FROM team_members
-    WHERE team IN (?, ?)
+    WHERE team IN (?, ?) AND yellow < 5 AND double_yellow = 0 AND red = 0
     ORDER BY team, fname
 ");
 $stmt->execute([$match['team1_id'], $match['team2_id']]);
@@ -354,36 +333,36 @@ $players = $stmt->fetchAll();
                             <input type="number" class="form-control" name="card_minute" min="1" max="120" placeholder="e.g., 45, 90+3" required>
                         </div>
 
-                        <!-- Offense Description (Red Card Only) -->
-                        <div class="form-group mb-4" id="offenseGroup" style="display: none;">
-                            <label><strong>Offense Description</strong></label>
-                            <div class="offense-card red">
-                                <p class="small mb-3">
-                                    <i class="fas fa-info-circle"></i> Red cards require a detailed offense description for discipline purposes.
-                                </p>
-                                <select class="form-select mb-2" id="offensePreset" onchange="setOffenseText()">
-                                    <option value="">-- Select common offense --</option>
-                                    <option value="Violent conduct">Violent conduct</option>
-                                    <option value="Spitting">Spitting</option>
-                                    <option value="Abusive language">Abusive language or gesture</option>
-                                    <option value="Serious foul play">Serious foul play</option>
-                                    <option value="Second yellow card">Second yellow card</option>
-                                    <option value="Other">Other (describe below)</option>
-                                </select>
-                                <textarea class="form-control" name="offense_description" id="offenseText" rows="3" placeholder="Describe the offense in detail..."></textarea>
-                            </div>
+                        <!-- Card Reason Title (required for every card) -->
+                        <div class="form-group mb-4">
+                            <label><strong>Card Reason Title <span class="text-danger">*</span></strong></label>
+                            <select class="form-select mb-2" id="reasonTitlePreset" onchange="applyReasonPreset()">
+                                <option value="">-- Select a common reason --</option>
+                                <option value="Violent Conduct">Violent Conduct</option>
+                                <option value="Spitting">Spitting</option>
+                                <option value="Abusive Language">Abusive Language</option>
+                                <option value="Serious Foul Play">Serious Foul Play</option>
+                                <option value="Second Yellow Card">Second Yellow Card</option>
+                                <option value="Dissent">Dissent</option>
+                                <option value="Unsporting Behaviour">Unsporting Behaviour</option>
+                                <option value="Reckless Tackle">Reckless Tackle</option>
+                                <option value="Persistent Infringement">Persistent Infringement</option>
+                            </select>
+                            <input type="text" class="form-control" name="card_reason_title" id="reasonTitleInput"
+                                   placeholder="e.g., Violent Conduct" required>
+                            <small class="text-muted">A short label shown throughout the app for this card.</small>
                         </div>
 
-                        <!-- Article Code (Red Card Only) -->
-                        <div class="form-group mb-4" id="articleGroup" style="display: none;">
-                            <label><strong>Article Code</strong></label>
-                            <select class="form-select" name="article_code">
-                                <option value="ART-1">Article 1 - General Misconduct</option>
-                                <option value="ART-14">Article 14 - Abusive Language</option>
-                                <option value="ART-15">Article 15 - Violent Conduct</option>
-                                <option value="ART-16">Article 16 - Spitting</option>
-                                <option value="ART-17">Article 17 - Serious Foul Play</option>
-                            </select>
+                        <!-- Detailed Explanation (Red Card required, optional otherwise) -
+                             AI generates a deep explanation (ai_summary) from this text. -->
+                        <div class="form-group mb-4" id="offenseGroup" style="display: none;">
+                            <label><strong>Detailed Explanation</strong></label>
+                            <div class="offense-card red">
+                                <p class="small mb-3">
+                                    <i class="fas fa-info-circle"></i> Describe what happened - AI generates a deep, thorough explanation from this text for the official match record.
+                                </p>
+                                <textarea class="form-control" name="offense_description" id="offenseText" rows="3" placeholder="Describe the offense in detail..."></textarea>
+                            </div>
                         </div>
 
                         <!-- Buttons -->
@@ -404,15 +383,15 @@ $players = $stmt->fetchAll();
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Show/hide offense section based on card type
+// Show/hide detailed explanation section based on card type
 document.getElementById('cardYellow').addEventListener('change', function() {
     document.getElementById('offenseGroup').style.display = 'none';
-    document.getElementById('articleGroup').style.display = 'none';
+    document.getElementById('offenseText').required = false;
 });
 
 document.getElementById('cardRed').addEventListener('change', function() {
     document.getElementById('offenseGroup').style.display = 'block';
-    document.getElementById('articleGroup').style.display = 'block';
+    document.getElementById('offenseText').required = true;
 });
 
 // Update card button styling
@@ -423,10 +402,12 @@ document.querySelectorAll('input[name="card_type"]').forEach(radio => {
     });
 });
 
-// Set offense text from preset
-function setOffenseText() {
-    const preset = document.getElementById('offensePreset').value;
-    document.getElementById('offenseText').value = preset;
+// Fill the required Card Reason Title from the common-reason preset
+function applyReasonPreset() {
+    const preset = document.getElementById('reasonTitlePreset').value;
+    if (preset) {
+        document.getElementById('reasonTitleInput').value = preset;
+    }
 }
 
 // Filter players by selected team

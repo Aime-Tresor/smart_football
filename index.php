@@ -1,3 +1,8 @@
+<?php
+require __DIR__ . '/vendor/autoload.php';
+use App\ServiceFactory;
+$standings = ServiceFactory::standingsService()->compute();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -569,6 +574,18 @@
       margin-top: 2px;
     }
 
+    .card-reason-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .card-ai-summary {
+      font-size: 0.8rem;
+      color: var(--gray-text);
+      margin-top: 2px;
+    }
+
     .card-icon {
       width: 20px;
       height: 20px;
@@ -690,6 +707,42 @@
     <h1>Catch Every Kick Live!</h1>
     <p>Get real-time updates and insights from Rwanda Primus National League and more.</p>
   </header>
+
+  <?php if (!empty($standings)): ?>
+  <div class="main-content" style="padding-bottom: 0;">
+    <h2 style="text-align:center;margin-bottom:10px;">League Table</h2>
+    <div style="max-width:800px;margin:0 auto 20px;overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;background:#fff;">
+        <thead>
+          <tr style="background:#222;color:#fff;">
+            <th style="padding:8px;">#</th>
+            <th style="padding:8px;text-align:left;">Team</th>
+            <th style="padding:8px;">P</th>
+            <th style="padding:8px;">W</th>
+            <th style="padding:8px;">D</th>
+            <th style="padding:8px;">L</th>
+            <th style="padding:8px;">GD</th>
+            <th style="padding:8px;">Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach (array_slice($standings, 0, 10) as $i => $row): ?>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:6px;text-align:center;"><?= $i + 1 ?></td>
+            <td style="padding:6px;"><?= htmlspecialchars($row['name']) ?></td>
+            <td style="padding:6px;text-align:center;"><?= $row['played'] ?></td>
+            <td style="padding:6px;text-align:center;"><?= $row['won'] ?></td>
+            <td style="padding:6px;text-align:center;"><?= $row['drawn'] ?></td>
+            <td style="padding:6px;text-align:center;"><?= $row['lost'] ?></td>
+            <td style="padding:6px;text-align:center;"><?= $row['goal_difference'] ?></td>
+            <td style="padding:6px;text-align:center;"><strong><?= $row['points'] ?></strong></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <div class="main-content">
     <div class="matches-grid" id="matchesContainer">
@@ -853,12 +906,18 @@
         cards.forEach(card => {
           const cardClass = card.card_type === 'yellow' ? 'yellow-card' : 'red-card';
           const cardIcon = card.card_type === 'yellow' ? 'Y' : 'R';
+          const reasonTitle = card.card_reason_title ? `<div class="card-reason-title">${card.card_reason_title}</div>` : '';
+          const aiSummary = card.ai_summary
+            ? `<div class="card-ai-summary"><em>AI: ${card.ai_summary}</em></div>`
+            : (card.ai_summary_status === 'pending' ? '<div class="card-ai-summary"><em>AI summary pending...</em></div>' : '');
           html += `
             <li class="card-item">
               <div class="card-icon ${cardClass}">${cardIcon}</div>
               <div class="player-info">
                 <div class="player-name">#${card.number || '?'} ${card.fname} ${card.lname}</div>
                 ${card.card_time ? `<div class="card-time">${card.card_time}'</div>` : ''}
+                ${reasonTitle}
+                ${aiSummary}
               </div>
             </li>
           `;

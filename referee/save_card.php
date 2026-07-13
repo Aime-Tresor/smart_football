@@ -1,136 +1,83 @@
 <?php
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use App\ServiceFactory;
+
+ob_start();
 session_start();
-
-// DB connection
-$conn = mysqli_connect("localhost", "root", "", "fa_db");
-if (!$conn) {
-    die(json_encode(['success' => false, 'message' => 'Database connection failed']));
-}
-
-// Check if required POST fields are provided
-if (!isset($_POST['player_id'], $_POST['card'])) {
-    die(json_encode(['success' => false, 'message' => 'Missing required data']));
-}
-
-$player_id = (int)$_POST['player_id'];
-$card = $_POST['card']; // either "yellow" or "red"
-$match_id = isset($_POST['match_id']) ? (int)$_POST['match_id'] : null;
-$card_time = isset($_POST['card_time']) ? $_POST['card_time'] : null;
 
 // Validate referee authorization (only referees can give cards)
 if (!isset($_SESSION['referee_id'])) {
+    header('Content-Type: application/json');
     die(json_encode(['success' => false, 'message' => 'Unauthorized: Only referees can issue cards']));
 }
 
-// Fetch current card counts and player info
-$sql = "SELECT member_id, fname, lname, yellow, double_yellow, red FROM team_members WHERE member_id = ?";
-$stmt = mysqli_prepare($conn, $sql);
-mysqli_stmt_bind_param($stmt, "i", $player_id);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-
-if (!$result || mysqli_num_rows($result) === 0) {
-    die(json_encode(['success' => false, 'message' => 'Player not found']));
+if (!isset($_POST['player_id'], $_POST['card'])) {
+    header('Content-Type: application/json');
+    die(json_encode(['success' => false, 'message' => 'Missing required data']));
 }
 
-$player = mysqli_fetch_assoc($result);
-$current_yellow = $player['yellow'];
-$current_double_yellow = $player['double_yellow'];
-$current_red = $player['red'];
+$reasonTitle = trim($_POST['card_reason_title'] ?? '');
+if ($reasonTitle === '') {
+    header('Content-Type: application/json');
+    die(json_encode(['success' => false, 'message' => 'Card Reason Title is required.']));
+}
 
-// Validate card logic
-$updateSql = '';
-$cardTypeToRecord = '';
-$message = '';
+$isAjax = isset($_POST['ajax']) && $_POST['ajax'] == '1';
 
-if ($card === 'yellow') {
-    $new_yellow_count = $current_yellow + 1;
+// The deep AI summary, discipline-case creation and the team notification
+// are deferred until after the response is sent (see below) so the
+// referee's quick-card action returns as fast as possible - this app has
+// no job queue, so this is the lightweight "poor man's async" pattern for
+// a plain Apache/mod_php stack (no fastcgi_finish_request available).
+$result = ServiceFactory::cardService()->issueCard([
+    'member_id' => $_POST['player_id'],
+    'match_id' => $_POST['match_id'] ?? null,
+    'card_type' => $_POST['card'],
+    'card_time' => $_POST['card_time'] ?? null,
+    'card_reason_title' => $reasonTitle,
+    'card_reason_detail' => $_POST['card_reason_detail'] ?? null,
+], deferAiProcessing: $isAjax);
 
-    // Check if this is the second yellow card (automatic red)
-    if ($new_yellow_count >= 2) {
-        // Convert to red card - reset yellows and add red
-        $new_yellow_count = 0; // Reset yellow cards
-        $new_red_count = $current_red + 1;
-        $updateSql = "UPDATE team_members SET yellow = ?, red = ? WHERE member_id = ?";
-        $cardTypeToRecord = 'red'; // Record as red card due to double yellow
-        $message = 'Second yellow card issued to ' . $player['fname'] . ' ' . $player['lname'] . ' - AUTOMATIC RED CARD! (Red cards: ' . $new_red_count . ')';
+if (!$result->success) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => $result->error]);
+    exit;
+}
+
+$card = $result->card;
+
+if ($isAjax) {
+    $payload = json_encode([
+        'success' => true,
+        'message' => ucfirst($card['card_type'] === 'double_yellow' ? 'red' : $card['card_type']) . ' card recorded successfully.',
+        'card_id' => (int) $card['card_id'],
+        'card_type' => $card['card_type'],
+        'card_reason_title' => $card['card_reason_title'],
+        'ai_summary_status' => $card['ai_summary_status'],
+    ]);
+
+    header('Content-Type: application/json');
+    header('Content-Length: ' . strlen($payload));
+    header('Connection: close');
+    echo $payload;
+
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
     } else {
-        // Regular yellow card
-        $updateSql = "UPDATE team_members SET yellow = ? WHERE member_id = ?";
-        $cardTypeToRecord = 'yellow';
-        $message = 'Yellow card issued to ' . $player['fname'] . ' ' . $player['lname'] . ' (Total: ' . $new_yellow_count . ')';
-    }
-} elseif ($card === 'red') {
-    // Direct red card - increment red count
-    $new_red_count = $current_red + 1;
-    $updateSql = "UPDATE team_members SET red = ? WHERE member_id = ?";
-    $cardTypeToRecord = 'red';
-    $message = 'Red card issued to ' . $player['fname'] . ' ' . $player['lname'] . ' (Total: ' . $new_red_count . ')';
-} else {
-    die(json_encode(['success' => false, 'message' => 'Invalid card type']));
-}
-
-// Begin transaction
-mysqli_autocommit($conn, false);
-
-try {
-    // Update team_members table
-    $stmt = mysqli_prepare($conn, $updateSql);
-
-    if ($card === 'yellow' && isset($new_red_count)) {
-        // Double yellow to red conversion - update both yellow and red counts
-        mysqli_stmt_bind_param($stmt, "iii", $new_yellow_count, $new_red_count, $player_id);
-    } elseif ($card === 'yellow') {
-        // Regular yellow card
-        mysqli_stmt_bind_param($stmt, "ii", $new_yellow_count, $player_id);
-    } elseif ($card === 'red') {
-        // Direct red card
-        mysqli_stmt_bind_param($stmt, "ii", $new_red_count, $player_id);
-    }
-
-    if (!mysqli_stmt_execute($stmt)) {
-        throw new Exception("Failed to update player card count");
-    }
-
-    // Record card in cards table for history
-    if ($match_id) {
-        $cardSql = "INSERT INTO cards (member_id, card_type, match_id, card_time, created_at) VALUES (?, ?, ?, ?, NOW())";
-        $cardStmt = mysqli_prepare($conn, $cardSql);
-        mysqli_stmt_bind_param($cardStmt, "isis", $player_id, $cardTypeToRecord, $match_id, $card_time);
-
-        if (!mysqli_stmt_execute($cardStmt)) {
-            throw new Exception("Failed to record card in history");
+        ignore_user_abort(true);
+        while (ob_get_level() > 0) {
+            ob_end_flush();
         }
+        flush();
     }
 
-    // Commit transaction
-    mysqli_commit($conn);
-
-    // Return success response
-    if (isset($_POST['ajax']) && $_POST['ajax'] == '1') {
-        echo json_encode([
-            'success' => true,
-            'message' => $message,
-            'card_type' => $cardTypeToRecord,
-            'player_name' => $player['fname'] . ' ' . $player['lname']
-        ]);
-    } else {
-        // Redirect back to the referring page for non-AJAX requests
-        $_SESSION['card_message'] = $message;
-        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'view_match.php'));
-        exit;
-    }
-
-} catch (Exception $e) {
-    // Rollback transaction
-    mysqli_rollback($conn);
-
-    if (isset($_POST['ajax']) && $_POST['ajax'] == '1') {
-        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
-    } else {
-        die("Error: " . $e->getMessage());
-    }
+    // The referee's browser already has its response; this runs after.
+    ServiceFactory::cardService()->completeCardProcessing((int) $card['card_id']);
+} else {
+    ServiceFactory::cardService()->completeCardProcessing((int) $card['card_id']);
+    $_SESSION['card_message'] = 'Card recorded successfully.';
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'view_match.php'));
+    exit;
 }
-
-mysqli_close($conn);
-?>

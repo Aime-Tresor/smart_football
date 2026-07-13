@@ -1,4 +1,8 @@
 <?php
+require __DIR__ . '/../vendor/autoload.php';
+
+use App\ServiceFactory;
+
 session_start();
 if (!isset($_SESSION['fa_user'])) {
     header('Location: ../app/login.php');
@@ -9,10 +13,12 @@ require_once '../app/database.php';
 
 // Fetch pending appeals
 $stmt = $connection->prepare("
-    SELECT ac.*, dc.offence_description, dc.article_code, dc.sanction, t.name as team_name
+    SELECT ac.*, dc.offence_description, dc.article_code, dc.sanction, t.name as team_name,
+           crd.card_id, crd.card_reason_title, crd.ai_summary, crd.ai_summary_status
     FROM appeal_cases ac
     JOIN ai_discipline_cases dc ON ac.discipline_case_id = dc.case_id
     JOIN team t ON ac.team_id = t.team_id
+    LEFT JOIN cards crd ON dc.card_id = crd.card_id
     WHERE ac.status = 'pending'
     ORDER BY ac.appeal_date ASC
 ");
@@ -20,7 +26,9 @@ $stmt->execute();
 $pending_appeals = $stmt->fetchAll();
 
 // Handle appeal decision
-$success_msg = $error_msg = '';
+$success_msg = $_SESSION['success'] ?? '';
+$error_msg = $_SESSION['error'] ?? '';
+unset($_SESSION['success'], $_SESSION['error']);
 if ($_POST && isset($_POST['decide_appeal'])) {
     $appeal_id = $_POST['appeal_id'];
     $decision = $_POST['decision'];
@@ -43,7 +51,16 @@ if ($_POST && isset($_POST['decide_appeal'])) {
                 $stmt = $connection->prepare("UPDATE ai_discipline_cases SET status = 'overturned' WHERE case_id IN (SELECT discipline_case_id FROM appeal_cases WHERE appeal_id = ?)");
                 $stmt->execute([$appeal_id]);
             }
-            
+
+            // Best-effort: generates the AI summary of the decision reason
+            // and notifies the team (in-app + email) - never blocks the
+            // decision itself from being recorded.
+            try {
+                ServiceFactory::appealDecisionService()->recordDecisionMade((int) $appeal_id);
+            } catch (\Throwable $e) {
+                error_log('committee_appeals.php: appeal decision follow-up failed: ' . $e->getMessage());
+            }
+
             $success_msg = "Appeal decision recorded successfully.";
         } catch (Exception $e) {
             $error_msg = "Error recording decision: " . $e->getMessage();
@@ -110,10 +127,28 @@ if ($_POST && isset($_POST['decide_appeal'])) {
                                 <i class="fas fa-flag"></i> <?php echo htmlspecialchars(substr($appeal['offence_description'], 0, 50)); ?>
                             </h6>
                             <p class="card-text">
+                                <small><strong>Card Reason Title:</strong> <?php echo htmlspecialchars($appeal['card_reason_title'] ?? 'N/A'); ?></small><br>
+                                <small><strong>AI Summary:</strong>
+                                    <?php if (!empty($appeal['ai_summary'])): ?>
+                                        <em><?php echo htmlspecialchars($appeal['ai_summary']); ?></em>
+                                    <?php elseif (($appeal['ai_summary_status'] ?? '') === 'pending'): ?>
+                                        <span class="text-muted">Generating...</span>
+                                    <?php elseif (($appeal['ai_summary_status'] ?? '') === 'failed'): ?>
+                                        <span class="text-danger">Generation failed</span>
+                                    <?php else: ?>
+                                        <span class="text-muted">Not available</span>
+                                    <?php endif; ?>
+                                </small><br>
                                 <small><strong>Article:</strong> <?php echo htmlspecialchars($appeal['article_code']); ?></small><br>
                                 <small><strong>Sanction:</strong> <?php echo htmlspecialchars($appeal['sanction']); ?></small><br>
                                 <small><strong>Submitted:</strong> <?php echo date('M d, Y H:i', strtotime($appeal['appeal_date'])); ?></small>
                             </p>
+                            <?php if (!empty($appeal['card_id'])): ?>
+                                <a href="controls/regenerate_ai_summary.php?card_id=<?php echo (int) $appeal['card_id']; ?>&redirect=committee_appeals.php"
+                                   class="btn btn-sm btn-outline-secondary mb-2">
+                                    <i class="fas fa-sync"></i> Regenerate AI Summary
+                                </a>
+                            <?php endif; ?>
                             
                             <div class="bg-light p-3 rounded mb-3">
                                 <strong>Appeal Grounds:</strong>

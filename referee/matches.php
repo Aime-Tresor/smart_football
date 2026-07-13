@@ -1,9 +1,9 @@
 <?php
 session_start();
 
-// Dummy login fallback for testing
 if (!isset($_SESSION['referee_id'])) {
-    $_SESSION['referee_id'] = 1;
+    header('Location: ../referee.php');
+    exit;
 }
 
 $refereeId = $_SESSION['referee_id'];

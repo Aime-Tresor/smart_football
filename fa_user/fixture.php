@@ -157,6 +157,13 @@
                                                             <button class="btn btn-sm btn-primary" onclick="showStatusModal(<?= $match->id ?>, '<?= $status ?>', '<?= htmlspecialchars($match->team1_name) ?>', '<?= htmlspecialchars($match->team2_name) ?>')">
                                                                 Update Status
                                                             </button>
+                                                            <?php if ($status === 'completed'): ?>
+                                                                <form method="post" action="controls/reopen_match.php" class="d-inline"
+                                                                      onsubmit="return confirm('Reopen this match? Referees will be able to record events again.');">
+                                                                    <input type="hidden" name="match_id" value="<?= $match->id ?>">
+                                                                    <button type="submit" class="btn btn-sm btn-warning">Reopen</button>
+                                                                </form>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </td>
                                                     <td></td>

@@ -1,9 +1,9 @@
 <?php
 session_start();
 
-// Dummy login fallback for testing
 if (!isset($_SESSION['referee_id'])) {
-    $_SESSION['referee_id'] = 1;
+    header('Location: ../referee.php');
+    exit;
 }
 
 // DB connection
@@ -249,6 +249,17 @@ $conn->close();
             margin-top: 8px;
             flex-wrap: wrap;
             justify-content: center;
+        }
+
+        .match-card-reasons {
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: #495057;
+            text-align: left;
+        }
+
+        .match-card-reason {
+            padding: 2px 0;
         }
 
         .card-icon {
@@ -596,10 +607,22 @@ $conn->close();
                             <?= ucfirst($match['status']) ?>
                         </div>
                     </div>
+                    <?php if ($match['status'] === 'live'): ?>
+                        <form method="post" action="stop_match.php" style="margin-top: 10px; text-align: center;"
+                              onsubmit="return confirm('Finish this match? Further goals, cards and substitutions cannot be recorded once it is finished.');">
+                            <input type="hidden" name="match_id" value="<?= (int) $match_id ?>" />
+                            <input type="hidden" name="confirm_zero_scores" value="1" />
+                            <button type="submit" class="btn-cancel" style="background:#dc3545;color:#fff;">🏁 Finish Match</button>
+                        </form>
+                    <?php elseif ($match['status'] === 'completed'): ?>
+                        <div class="alert" style="margin-top:10px;background:#e2e3e5;padding:10px;border-radius:6px;text-align:center;">
+                            This match is finished. Events can no longer be recorded.
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Enhanced Goal Entry Section -->
-                <div class="goal-entry">
+                <div class="goal-entry" <?= $match['status'] === 'completed' ? 'style="opacity:0.5;pointer-events:none;"' : '' ?>>
                     <h3>⚽ Goal Entry</h3>
                     <div class="goal-entry-tabs">
                         <button type="button" class="tab-btn active" onclick="switchTab('quick')">Quick Entry</button>
@@ -700,6 +723,47 @@ $conn->close();
                     <div class="modal-actions">
                         <button type="button" class="btn-cancel" onclick="closeQuickGoalModal()">Cancel</button>
                         <button type="submit" class="btn-save">⚽ Add Goal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Reason Modal -->
+    <div id="cardReasonModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="cardReasonModalTitle">Card Reason</h3>
+                <span class="modal-close" onclick="closeCardReasonModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="cardReasonForm">
+                    <div class="form-group">
+                        <label for="cardReasonTitlePreset">Common Reason:</label>
+                        <select id="cardReasonTitlePreset" class="form-control" onchange="document.getElementById('cardReasonTitleInput').value = this.value || document.getElementById('cardReasonTitleInput').value;">
+                            <option value="">-- Select a common reason --</option>
+                            <option value="Violent Conduct">Violent Conduct</option>
+                            <option value="Spitting">Spitting</option>
+                            <option value="Abusive Language">Abusive Language</option>
+                            <option value="Serious Foul Play">Serious Foul Play</option>
+                            <option value="Second Yellow Card">Second Yellow Card</option>
+                            <option value="Dissent">Dissent</option>
+                            <option value="Unsporting Behaviour">Unsporting Behaviour</option>
+                            <option value="Reckless Tackle">Reckless Tackle</option>
+                            <option value="Persistent Infringement">Persistent Infringement</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cardReasonTitleInput">Card Reason Title: <span style="color:#dc3545">*</span></label>
+                        <input type="text" id="cardReasonTitleInput" class="form-control" placeholder="e.g., Violent Conduct" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cardReasonDetailInput">Detailed Explanation (optional - AI generates a deep explanation from this text):</label>
+                        <textarea id="cardReasonDetailInput" class="form-control" rows="3" placeholder="Describe what happened..."></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel" onclick="closeCardReasonModal()">Cancel</button>
+                        <button type="submit" class="btn-save">Record Card</button>
                     </div>
                 </form>
             </div>
@@ -970,6 +1034,23 @@ $conn->close();
                 });
             }
 
+            // Card Reason Title / deep AI summary for cards issued in this match
+            let matchCardsDisplay = '';
+            if (player.match_cards && player.match_cards.length > 0) {
+                matchCardsDisplay = '<div class="match-card-reasons">' + player.match_cards.map(c => {
+                    const icon = c.card_type === 'yellow' ? '🟨' : '🟥';
+                    let summary = '';
+                    if (c.ai_summary) {
+                        summary = ` &mdash; <em>${c.ai_summary}</em>`;
+                    } else if (c.ai_summary_status === 'pending') {
+                        summary = ' <em class="text-muted">(generating AI summary...)</em>';
+                    } else if (c.ai_summary_status === 'failed') {
+                        summary = ' <em class="text-muted">(AI summary failed)</em>';
+                    }
+                    return `<div class="match-card-reason">${icon} <strong>${c.card_reason_title || ''}</strong>${summary}</div>`;
+                }).join('') + '</div>';
+            }
+
             playersHtml += `
                 <div class="player-card" data-player-id="${player.member_id}">
                     <div class="player-info">
@@ -982,6 +1063,7 @@ $conn->close();
                     <div class="cards-received">
                         ${cardsDisplay || '<div style="text-align: center; color: #6c757d;">No cards</div>'}
                     </div>
+                    ${matchCardsDisplay}
                     <div class="card-actions">
                         <button class="card-btn yellow" onclick="giveCard(${player.member_id}, 'yellow')" title="Give Yellow Card">
                             🟨
@@ -998,16 +1080,52 @@ $conn->close();
         console.log('Players displayed successfully');
     }
 
-    // Give card to player
+    // Give card to player - a Card Reason Title is required for every card,
+    // so this opens a small modal to collect it (and an optional detailed
+    // explanation AI uses to write a deep summary) before submitting.
+    let pendingCard = null;
+
+    const matchStatus = <?= json_encode($match['status']) ?>;
+
     function giveCard(playerId, cardType) {
-        if (!confirm(`Are you sure you want to give a ${cardType} card to this player?`)) {
+        if (matchStatus === 'completed') {
+            showMessage('This match is finished; cards can no longer be recorded.', 'error');
+            return;
+        }
+        pendingCard = { playerId, cardType };
+        document.getElementById('cardReasonModalTitle').textContent =
+            (cardType === 'red' ? '🟥 Red' : '🟨 Yellow') + ' Card Reason';
+        document.getElementById('cardReasonTitlePreset').value = '';
+        document.getElementById('cardReasonTitleInput').value = '';
+        document.getElementById('cardReasonDetailInput').value = '';
+        document.getElementById('cardReasonModal').style.display = 'flex';
+    }
+
+    function closeCardReasonModal() {
+        document.getElementById('cardReasonModal').style.display = 'none';
+        pendingCard = null;
+    }
+
+    document.getElementById('cardReasonForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!pendingCard) return;
+
+        const reasonTitle = document.getElementById('cardReasonTitleInput').value.trim();
+        if (!reasonTitle) {
+            showMessage('Card Reason Title is required.', 'error');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to give a ${pendingCard.cardType} card to this player?`)) {
             return;
         }
 
         const formData = new FormData();
-        formData.append('player_id', playerId);
+        formData.append('player_id', pendingCard.playerId);
         formData.append('match_id', currentMatchId);
-        formData.append('card', cardType);
+        formData.append('card', pendingCard.cardType);
+        formData.append('card_reason_title', reasonTitle);
+        formData.append('card_reason_detail', document.getElementById('cardReasonDetailInput').value.trim());
         formData.append('ajax', '1');
 
         fetch('save_card.php', {
@@ -1018,8 +1136,12 @@ $conn->close();
         .then(data => {
             if (data.success) {
                 showMessage(data.message, 'success');
+                closeCardReasonModal();
                 // Reload players to show updated cards immediately
                 loadTeamPlayers();
+                if (data.card_id) {
+                    pollForAiSummary(data.card_id);
+                }
             } else {
                 showMessage(data.message || 'Error giving card', 'error');
             }
@@ -1028,6 +1150,28 @@ $conn->close();
             console.error('Error:', error);
             showMessage('An error occurred while giving the card.', 'error');
         });
+    });
+
+    // The card is saved with its title instantly; the deep AI summary is
+    // generated moments later (see save_card.php). Poll briefly so the
+    // player list (and its match-card-reason tooltips) update once it's
+    // ready, without requiring a page refresh.
+    function pollForAiSummary(cardId, attempt = 0) {
+        if (attempt >= 8) {
+            return; // stop after ~12s; the summary will still show next time the list refreshes
+        }
+        setTimeout(() => {
+            fetch(`get_card_status.php?card_id=${cardId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.ai_summary_status !== 'pending') {
+                        loadTeamPlayers();
+                    } else {
+                        pollForAiSummary(cardId, attempt + 1);
+                    }
+                })
+                .catch(() => pollForAiSummary(cardId, attempt + 1));
+        }, 1500);
     }
 
     // Setup goal forms
