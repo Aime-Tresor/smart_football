@@ -1,8 +1,16 @@
 <?php
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use App\ServiceFactory;
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require '../app/database.php';
+
+$unreadNotificationCount = isset($_SESSION['Team_id'])
+    ? ServiceFactory::notificationRepository()->unreadCount('team', (int) $_SESSION['Team_id'])
+    : 0;
 ?>
 
 ?>
@@ -100,6 +108,17 @@ header("location: ../teams.php");
                     <!-- ============================================================== -->
                     <ul class="navbar-nav my-lg-0">
                         <!-- ============================================================== -->
+                        <!-- Notifications -->
+                        <!-- ============================================================== -->
+                        <li class="nav-item">
+                            <a class="nav-link waves-effect waves-dark" href="notifications.php" title="Notifications">
+                                <i class="fa fa-bell"></i>
+                                <?php if ($unreadNotificationCount > 0): ?>
+                                    <span class="badge badge-danger"><?= $unreadNotificationCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <!-- ============================================================== -->
                         <!-- Profile -->
                         <!-- ============================================================== -->
                         <li class="nav-item dropdown u-pro">
@@ -137,6 +156,13 @@ header("location: ../teams.php");
                         </li>
                         <li> <a class="waves-effect waves-dark" href="player_cards.php" aria-expanded="false"><i
                                     class="fa fa-square"></i><span class="hide-menu">Player Cards</span></a>
+                        </li>
+                        <li> <a class="waves-effect waves-dark" href="notifications.php" aria-expanded="false"><i
+                                    class="fa fa-bell"></i><span class="hide-menu">Notifications</span>
+                                <?php if ($unreadNotificationCount > 0): ?>
+                                    <span class="badge badge-danger"><?= $unreadNotificationCount ?></span>
+                                <?php endif; ?>
+                            </a>
                         </li>
                         <li> <a class="waves-effect waves-dark" href="transfer.php" aria-expanded="false"><i
                                     class="fa fa-refresh"></i><span class="hide-menu">Transfer</span></a>

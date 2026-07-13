@@ -1,4 +1,8 @@
-<?php 
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+
+use App\ServiceFactory;
+
 session_start();
 require '../app/database.php';
 
@@ -31,14 +35,21 @@ $stmt->execute([$team_id]);
 $players = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get card history from cards table
-$cardHistorySql = "SELECT 
+$cardHistorySql = "SELECT
+                    c.card_id,
                     c.member_id,
                     c.card_type,
                     c.card_time,
+                    c.card_reason_title,
+                    c.card_reason_detail,
+                    c.ai_summary,
+                    c.ai_summary_status,
                     c.created_at,
                     m.match_date,
                     m.match_time,
-                    CASE 
+                    m.season,
+                    m.competition,
+                    CASE
                         WHEN m.team1_id = ? THEN t2.name
                         WHEN m.team2_id = ? THEN t1.name
                         ELSE 'Unknown'
@@ -47,7 +58,7 @@ $cardHistorySql = "SELECT
                    LEFT JOIN `match` m ON c.match_id = m.id
                    LEFT JOIN team t1 ON m.team1_id = t1.team_id
                    LEFT JOIN team t2 ON m.team2_id = t2.team_id
-                   WHERE c.member_id IN (
+                   WHERE c.deleted_at IS NULL AND c.member_id IN (
                        SELECT member_id FROM team_members WHERE team = ? AND role_in_team = 'player'
                    )
                    ORDER BY c.created_at DESC";
@@ -60,6 +71,15 @@ $cardHistory = $cardHistoryStmt->fetchAll(PDO::FETCH_ASSOC);
 $playerCardHistory = [];
 foreach ($cardHistory as $card) {
     $playerCardHistory[$card['member_id']][] = $card;
+}
+
+// Cards-by-season / cards-by-competition breakdown per player (Phase 3),
+// derived from the same `cards` table as the totals above so they can
+// never disagree.
+$breakdownService = ServiceFactory::cardBreakdownService();
+$playerCardBreakdown = [];
+foreach ($players as $player) {
+    $playerCardBreakdown[$player['member_id']] = $breakdownService->bySeason((int) $player['member_id']);
 }
 
 require 'header.php';
@@ -256,6 +276,7 @@ require 'header.php';
                                             <th>Date</th>
                                             <th>Player</th>
                                             <th>Card Type</th>
+                                            <th>Reason Title</th>
                                             <th>Match</th>
                                             <th>Time</th>
                                         </tr>
@@ -297,6 +318,7 @@ require 'header.php';
                                                 ?>
                                                 <span class="badge bg-<?= $cardClass ?>"><?= $cardIcon ?> <?= ucfirst(str_replace('_', ' ', $card['card_type'])) ?></span>
                                             </td>
+                                            <td><?= htmlspecialchars($card['card_reason_title'] ?: '—') ?></td>
                                             <td>
                                                 <?php if ($card['opponent_name']): ?>
                                                     vs <?= htmlspecialchars($card['opponent_name']) ?>
@@ -341,9 +363,11 @@ function showPlayerHistory(playerId) {
     // Find player data
     const players = <?= json_encode($players) ?>;
     const cardHistory = <?= json_encode($playerCardHistory) ?>;
-    
+    const cardBreakdown = <?= json_encode($playerCardBreakdown) ?>;
+
     const player = players.find(p => p.member_id == playerId);
     const history = cardHistory[playerId] || [];
+    const breakdown = cardBreakdown[playerId] || [];
     
     let content = `
         <div class="text-center mb-3">
@@ -373,17 +397,28 @@ function showPlayerHistory(playerId) {
         </div>
     `;
     
+    if (breakdown.length > 0) {
+        content += '<h6>Cards by Season / Competition:</h6><table class="table table-sm table-bordered mb-3"><thead><tr><th>Season</th><th>Competition</th><th>Yellow</th><th>Red</th><th>Total</th></tr></thead><tbody>';
+        breakdown.forEach(row => {
+            content += `<tr><td>${row.season}</td><td>${row.competition || row.season}</td><td>${row.yellow}</td><td>${row.double_yellow + row.red}</td><td>${row.total}</td></tr>`;
+        });
+        content += '</tbody></table>';
+    }
+
     if (history.length === 0) {
         content += '<div class="alert alert-info">No card history found for this player.</div>';
     } else {
         content += '<h6>Card History:</h6><div class="list-group">';
         history.forEach(card => {
-            const cardIcon = card.card_type === 'yellow' ? '🟨' : 
+            const cardIcon = card.card_type === 'yellow' ? '🟨' :
                            card.card_type === 'red' ? '🟥' : '🟨🟥';
             const cardName = card.card_type.replace('_', ' ');
             const matchInfo = card.opponent_name ? `vs ${card.opponent_name}` : 'Match details unavailable';
             const cardTime = card.card_time ? `${card.card_time}'` : 'Time not recorded';
-            
+            // AI-generated summary is intentionally not shown to teams - it's
+            // an internal aid for admin/committee review only.
+            const reasonTitle = card.card_reason_title ? `<div><strong>Reason:</strong> ${card.card_reason_title}</div>` : '';
+
             content += `
                 <div class="list-group-item">
                     <div class="d-flex justify-content-between align-items-center">
@@ -391,6 +426,7 @@ function showPlayerHistory(playerId) {
                             <span class="badge bg-${card.card_type === 'yellow' ? 'warning' : 'danger'} me-2">${cardIcon}</span>
                             <strong>${cardName.charAt(0).toUpperCase() + cardName.slice(1)}</strong>
                             <br><small class="text-muted">${matchInfo} - ${cardTime}</small>
+                            ${reasonTitle}
                         </div>
                         <small class="text-muted">${new Date(card.created_at).toLocaleDateString()}</small>
                     </div>

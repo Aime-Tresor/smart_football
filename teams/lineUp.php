@@ -16,13 +16,13 @@
                     <div class="card-body">
                         <h5 class="card-title">Player</h5>
                         <?php
-                
-                                   $sql = 'SELECT * FROM `team_members` WHERE role_in_team="player" AND team=?';
-                                   $statement = $connection->prepare($sql);
-                                   
-                                   $statement->execute([$_SESSION['Team_id']]);
-                                   $Teams = $statement->fetchAll(PDO::FETCH_OBJ);
-                                   foreach($Teams as $team):
+                                   // Suspended players (5+ yellows, or any red/double-yellow) must not be
+                                   // selectable to play a match at all - excluded here rather than just
+                                   // disabling their "add" button, so they never appear in this list.
+                                   $eligiblePlayers = \App\ServiceFactory::teamMemberRepository()
+                                       ->findEligiblePlayers((string) $_SESSION['Team_id']);
+                                   foreach ($eligiblePlayers as $team):
+                                       $team = (object) $team;
                                    ?>
                         <div class="d-flex flex-row comment-row m-t-0">
                             <div class="p-2"><span class="round round-info"><?= $team->number; ?></span></div>
@@ -30,31 +30,18 @@
                                 <h6 class="font-medium"><?= $team->fname; ?> <?= $team->lname; ?></h6>
 
                                 <div class="comment-footer">
-                                    <?php 
-                                    if ($team->yellow >= 5) {
-                                        echo '<span title="Due to have 5 Yellow cards" class="badge bg-danger">Suspend</span>';
-                                    }
-                                    elseif ($team->double_yellow > 0) {
-                                        echo '<span title="Last Days you have Double Yellows" class="badge bg-danger">Suspend</span>';
-                                    }
-                                    elseif ($team->red > 0) {
-                                        echo '<span title="Have Red Card in Previous Match" class="badge bg-danger">Suspend</span>';
-                                    }
-                                    else {
-                                        echo '<span class="badge bg-info">Allowed</span>';
-                                       ?>
-                                        <span class="action-icons">
+                                    <span class="badge bg-info">Allowed</span>
+                                    <span class="action-icons">
                                         <a href="?add=<?= $team->member_id; ?>&week=<?= $_GET['week'] ?>"><i class="fa fa-plus-square-o"></i></a>
                                     </span>
-                                       <?php
-                                    }
-                                    ?>
-                                
                                     <span class="text-muted float-end"><?= $team->position; ?></span>
                                 </div>
                             </div>
                         </div>
                         <?php endforeach; ?>
+                        <?php if (empty($eligiblePlayers)): ?>
+                            <p class="text-muted">No eligible players available (all are suspended).</p>
+                        <?php endif; ?>
 
 
                     </div>

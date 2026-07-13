@@ -1,4 +1,23 @@
-<?php require_once 'header.php'; ?>
+<?php
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use App\ServiceFactory;
+
+require_once 'header.php';
+?>
+
+<?php if (!empty($_SESSION['success'])): ?>
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+<?php endif; ?>
+<?php if (!empty($_SESSION['error'])): ?>
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+<?php endif; ?>
 
 <style>
   /* Card styles */
@@ -184,12 +203,22 @@
                 
                 if ($decision === 'approved') {
                     $stmt = $connection->prepare("
-                        UPDATE ai_discipline_cases 
-                        SET status = 'overturned' 
+                        UPDATE ai_discipline_cases
+                        SET status = 'overturned'
                         WHERE case_id = (SELECT discipline_case_id FROM appeal_cases WHERE appeal_id = ?)
                     ");
                     $stmt->execute([$appeal_id]);
                 }
+
+                // Best-effort: generates the AI summary of the decision
+                // reason and notifies the team (in-app + email) - never
+                // blocks the decision itself from being recorded.
+                try {
+                    ServiceFactory::appealDecisionService()->recordDecisionMade((int) $appeal_id);
+                } catch (\Throwable $e) {
+                    error_log('discipline_committee_dashboard.php: appeal decision follow-up failed: ' . $e->getMessage());
+                }
+
                 echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
                         <i class="fas fa-check-circle"></i> Appeal decision recorded successfully!
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -198,11 +227,13 @@
 
             $stmt = $connection->prepare("
               SELECT ac.*, t.name as team_name, dc.offence_description, dc.article_code, dc.sanction,
-                     tm.fname, tm.lname, tm.number, tm.position
+                     tm.fname, tm.lname, tm.number, tm.position,
+                     crd.card_id, crd.card_reason_title, crd.ai_summary, crd.ai_summary_status
               FROM appeal_cases ac
               JOIN team t ON ac.team_id = t.team_id
               LEFT JOIN ai_discipline_cases dc ON ac.discipline_case_id = dc.case_id
               LEFT JOIN team_members tm ON dc.member_id = tm.member_id
+              LEFT JOIN cards crd ON dc.card_id = crd.card_id
               WHERE ac.status = 'pending'
               ORDER BY ac.appeal_date ASC
             ");
@@ -272,8 +303,29 @@
                                   <p class="mb-1">
                                     <strong>Offense:</strong> <?php echo htmlspecialchars($appeal['offence_description'] ?? 'N/A'); ?>
                                   </p>
+                                  <p class="mb-1">
+                                    <strong>Card Reason Title:</strong> <?php echo htmlspecialchars($appeal['card_reason_title'] ?? 'N/A'); ?>
+                                  </p>
+                                  <p class="mb-1">
+                                    <strong>AI Summary:</strong>
+                                    <?php if (!empty($appeal['ai_summary'])): ?>
+                                      <em><?php echo htmlspecialchars($appeal['ai_summary']); ?></em>
+                                    <?php elseif (($appeal['ai_summary_status'] ?? '') === 'pending'): ?>
+                                      <span class="text-muted">Generating...</span>
+                                    <?php elseif (($appeal['ai_summary_status'] ?? '') === 'failed'): ?>
+                                      <span class="text-danger">Generation failed</span>
+                                    <?php else: ?>
+                                      <span class="text-muted">Not available</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($appeal['card_id'])): ?>
+                                      <a href="controls/regenerate_ai_summary.php?card_id=<?php echo (int) $appeal['card_id']; ?>&redirect=discipline_committee_dashboard.php"
+                                         class="btn btn-sm btn-outline-secondary ms-2">
+                                        <i class="fas fa-sync"></i> Regenerate
+                                      </a>
+                                    <?php endif; ?>
+                                  </p>
                                   <p class="mb-0">
-                                    <strong>Article:</strong> <?php echo htmlspecialchars($appeal['article_code'] ?? 'N/A'); ?> | 
+                                    <strong>Article:</strong> <?php echo htmlspecialchars($appeal['article_code'] ?? 'N/A'); ?> |
                                     <strong>Sanction:</strong> <?php echo htmlspecialchars($appeal['sanction'] ?? 'N/A'); ?>
                                   </p>
                                 </div>
@@ -363,6 +415,7 @@
                       <th>Decision Date</th>
                       <th>Status</th>
                       <th>Reasoning</th>
+                      <th>AI Summary</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -377,6 +430,22 @@
                           </span>
                         </td>
                         <td><small><?php echo htmlspecialchars(substr($decision['decision_reason'] ?? '', 0, 40)); ?>...</small></td>
+                        <td>
+                          <small>
+                            <?php if (!empty($decision['ai_summary'])): ?>
+                              <em><?php echo htmlspecialchars($decision['ai_summary']); ?></em>
+                            <?php elseif (($decision['ai_summary_status'] ?? '') === 'failed'): ?>
+                              <span class="text-danger">Generation failed</span>
+                            <?php else: ?>
+                              <span class="text-muted">Not available</span>
+                            <?php endif; ?>
+                          </small>
+                          <br>
+                          <a href="controls/regenerate_appeal_summary.php?appeal_id=<?php echo (int) $decision['appeal_id']; ?>&redirect=discipline_committee_dashboard.php"
+                             class="btn btn-sm btn-outline-secondary mt-1">
+                            <i class="fas fa-sync"></i> Regenerate
+                          </a>
+                        </td>
                       </tr>
                     <?php endforeach; ?>
                   </tbody>

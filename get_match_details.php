@@ -42,9 +42,14 @@ try {
     
     // Get cards issued in this match
     $cardsSql = "
-        SELECT 
+        SELECT
+            c.card_id,
             c.card_type,
             c.card_time,
+            c.card_reason_title,
+            c.card_reason_detail,
+            c.ai_summary,
+            c.ai_summary_status,
             tm.fname,
             tm.lname,
             tm.number,
@@ -52,7 +57,7 @@ try {
         FROM cards c
         JOIN team_members tm ON c.member_id = tm.member_id
         JOIN team t ON tm.team = t.team_id
-        WHERE c.match_id = ?
+        WHERE c.match_id = ? AND c.deleted_at IS NULL
         ORDER BY c.created_at ASC
     ";
     

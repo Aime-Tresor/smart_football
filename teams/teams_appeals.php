@@ -173,6 +173,8 @@ if ($_POST && isset($_POST['submit_appeal'])) {
                                                     <td><span class="badge badge-<?php echo $appeal['status']; ?>"><?php echo ucfirst($appeal['status']); ?></span></td>
                                                     <td>
                                                         <?php if ($appeal['status'] !== 'pending'): ?>
+                                                            <!-- AI-generated summary is intentionally not shown to teams
+                                                                 here - it's an internal aid for admin/committee review only. -->
                                                             <small><?php echo htmlspecialchars(substr($appeal['decision_reason'] ?? 'N/A', 0, 30)); ?></small>
                                                         <?php else: ?>
                                                             <span class="text-muted">Awaiting review</span>

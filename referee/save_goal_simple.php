@@ -12,9 +12,8 @@ if ($conn->connect_error) {
     die(json_encode(['success' => false, 'message' => 'Connection failed: ' . $conn->connect_error]));
 }
 
-// Set fallback referee ID if not logged in
 if (!isset($_SESSION['referee_id'])) {
-    $_SESSION['referee_id'] = 1; // Fallback for testing
+    die(json_encode(['success' => false, 'message' => 'Unauthorized: Only referees can record goals']));
 }
 
 $referee_id = $_SESSION['referee_id'];
@@ -48,6 +47,10 @@ if ($matchResult->num_rows === 0) {
 }
 
 $match = $matchResult->fetch_assoc();
+
+if ($match['status'] === 'completed') {
+    die(json_encode(['success' => false, 'message' => 'Match is finished; goals can no longer be recorded.']));
+}
 
 // Verify team belongs to this match
 if ($team_id != $match['team1_id'] && $team_id != $match['team2_id']) {

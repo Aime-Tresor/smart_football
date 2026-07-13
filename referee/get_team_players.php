@@ -4,10 +4,9 @@ session_start();
 // Debug: Log the start of the request
 error_log("get_team_players.php - Request started");
 
-// Check if referee is logged in (set fallback for testing)
 if (!isset($_SESSION['referee_id'])) {
-    $_SESSION['referee_id'] = 1; // Fallback for testing
-    error_log("get_team_players.php - Set fallback referee_id = 1");
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit();
 }
 
 // Database connection
@@ -72,6 +71,9 @@ $players_sql = "
         tm.role_in_team
     FROM team_members tm
     WHERE tm.team = ? AND tm.role_in_team = 'player'
+      -- Suspended players must not be selectable for match events;
+      -- keep this threshold in sync with TeamMemberRepository::isSuspended().
+      AND tm.yellow < 5 AND tm.double_yellow = 0 AND tm.red = 0
     ORDER BY tm.number ASC, tm.fname ASC, tm.lname ASC
 ";
 
@@ -94,6 +96,32 @@ $players_result = $players_stmt->get_result();
 
 // Debug logging
 error_log("get_team_players.php - Team ID: $team_id, Team Name: $team_name, Players found: " . $players_result->num_rows);
+
+// Card Reason Title / AI summary for cards actually issued in THIS match,
+// keyed by member_id, so the UI can show why a card was given without
+// changing the existing career-total icon logic below.
+$matchCardsByMember = [];
+$cardsSql = "
+    SELECT member_id, card_type, card_reason_title, ai_summary, ai_summary_status, card_time, created_at
+    FROM cards
+    WHERE match_id = ? AND deleted_at IS NULL
+    ORDER BY created_at ASC
+";
+$cardsStmt = $conn->prepare($cardsSql);
+if ($cardsStmt) {
+    $cardsStmt->bind_param('i', $match_id);
+    $cardsStmt->execute();
+    $cardsResult = $cardsStmt->get_result();
+    while ($cardRow = $cardsResult->fetch_assoc()) {
+        $matchCardsByMember[intval($cardRow['member_id'])][] = [
+            'card_type' => $cardRow['card_type'],
+            'card_reason_title' => $cardRow['card_reason_title'],
+            'ai_summary' => $cardRow['ai_summary'],
+            'ai_summary_status' => $cardRow['ai_summary_status'],
+            'card_time' => $cardRow['card_time'],
+        ];
+    }
+}
 
 $players = [];
 while ($row = $players_result->fetch_assoc()) {
@@ -124,7 +152,8 @@ while ($row = $players_result->fetch_assoc()) {
         'role_in_team' => $row['role_in_team'],
         'cards' => $cards,
         'yellow_count' => intval($row['yellow']),
-        'red_count' => intval($row['red']) + intval($row['double_yellow'])
+        'red_count' => intval($row['red']) + intval($row['double_yellow']),
+        'match_cards' => $matchCardsByMember[intval($row['member_id'])] ?? []
     ];
 }
 

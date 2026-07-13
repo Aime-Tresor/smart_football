@@ -1,6 +1,15 @@
 <?php
+require __DIR__ . '/../../vendor/autoload.php';
+
+use App\ServiceFactory;
+
 session_start();
 require '../../app/database.php';
+
+if (!isset($_SESSION['fa_user']) || empty($_SESSION['fa_user'])) {
+    header('Location: ../../login.php');
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -27,16 +36,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Prepare update query based on status
         if ($new_status === 'completed') {
-            // For completed matches, require scores
-            if ($team1_score === null || $team2_score === null) {
-                throw new Exception('Scores are required for completed matches.');
+            // Finishing a match is routed through MatchCompletionService so it
+            // gets the same authorization, audit log, locking and player-stat
+            // recalculation as the referee "Finish Match" button.
+            $actorIdStmt = $connection->prepare('SELECT id FROM fa_user WHERE username = ?');
+            $actorIdStmt->execute([$_SESSION['fa_user']]);
+
+            $result = ServiceFactory::matchCompletionService()->finish($match_id, [
+                'type' => 'fa_user',
+                'id' => (int) ($actorIdStmt->fetchColumn() ?: 0),
+            ], [
+                'team1_goal' => $team1_score,
+                'team2_goal' => $team2_score,
+                'confirm_zero_scores' => true,
+            ]);
+
+            if (!$result->success) {
+                throw new Exception($result->error);
             }
-            
-            $updateSql = "UPDATE `match` SET status = ?, team1_goal = ?, team2_goal = ? WHERE id = ?";
-            $updateStmt = $connection->prepare($updateSql);
-            $updateStmt->execute([$new_status, $team1_score, $team2_score, $match_id]);
-            
-            $message = "Match status updated to completed with final score: {$team1_score} - {$team2_score}";
+
+            $finalTeam1 = $result->match['team1_goal'];
+            $finalTeam2 = $result->match['team2_goal'];
+            $message = "Match status updated to completed with final score: {$finalTeam1} - {$finalTeam2}";
         } else {
             // For upcoming/live matches, just update status
             if ($new_status === 'upcoming') {

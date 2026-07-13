@@ -467,6 +467,16 @@ $result = $stmtMatches->get_result();
               ⚽ Update Goals
             </button>
           <?php endif; ?>
+          <?php if ($status === 'live'): ?>
+            <form method="post" action="stop_match.php" style="display:inline;"
+                  onsubmit="return confirm('Finish this match? Further goals, cards and substitutions cannot be recorded once it is finished.');">
+              <input type="hidden" name="match_id" value="<?= $matchId ?>">
+              <input type="hidden" name="confirm_zero_scores" value="1">
+              <button type="submit" class="btn-view-match" style="background:#dc3545;color:#fff;">
+                🏁 Finish Match
+              </button>
+            </form>
+          <?php endif; ?>
           <a href="view_match.php?match_id=<?= $matchId ?>" class="btn-view-match">
             👁️ View Match
           </a>
